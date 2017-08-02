@@ -305,7 +305,7 @@ namespace OneClickCore
         public static string getTagName(string spreadsheetId = "1rkEhkGsitr3VhKayIJpvdoUsIYOPfJUNimMD09CkMuE",string sheetName = "Sheet1",string mergedXMLPath = "C:\\Users\\udhungel\\Downloads\\m@hdcperfagtv004@Platform_Redpath_OVR.xml")
         {
             // string spreadsheetId = spreadsheetIDTextbox.Text; //Impliment this for the input entered in the textbox
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 6; i++)
             {
                 appendEmptyColumn(spreadsheetId);
             }
@@ -349,10 +349,11 @@ namespace OneClickCore
 
                     listofScriptTags.Add(row.scriptname);
                 }
-                
+                int incrementIndex = 0;
+                int scriptId = 1;
                 foreach (var row in values)//Gets all the tags of the COLUMN A
                 {
-                    int rowIndex = values.IndexOf(row);
+                    
                     string transactionName = row.transactionname;
                     string scriptName = row.scriptname;
                     string Min = row.min;
@@ -363,9 +364,18 @@ namespace OneClickCore
                     string bound1 = row.bound1;
                     string bound2 = row.bound2;
                     string nameTag = row.transactionname.ToString();
+                    bool scriptTag = false;
+                  
+
+                    if(transactionName == "#Overall Response Time#")
+                    {
+                        incrementIndex++;
+                        scriptTag = true;
+                    }
+                    int rowIndex = values.IndexOf(row)+incrementIndex;
                     //   var name = row.Select(p => p.ToString()).ToList(); // Converting generic type to string
                     //   string nameTag = string.Join("", name);  // // Converting generic type to string
-
+                  
 
                     bool loop = true;
                     var startColNum = 1;
@@ -380,24 +390,42 @@ namespace OneClickCore
                         string nullColumnIndexRange = string.Concat(sheetName,"!"); //Range to be concatinated with
 
                         string rangeStr = rangeConcat.ToString();
-
-                        string finalRange = string.Concat(nullColumnIndexRange, rangeStr, rowIndex+1);//Concatinates the string to produce the range string for the right column to enter the data
-
+                      
+                        string finalRange = string.Concat(nullColumnIndexRange, rangeStr, rowIndex );//Concatinates the string to produce the range string for the right column to enter the date
+                     
 
                         string colData = getColumnData(finalRange);//Loops through the google docs sheet to find the 
 
+                        //Adds the script# title after end of each scripts
+                        if (scriptTag == true && rowIndex>1)
+                        {
+                           // appendSheetFormat(rowIndex - 2);
+                            insertNewColumnValue("Script#"+scriptId, null, null, null, null, null, null, null, null, string.Concat(nullColumnIndexRange, rangeStr, rowIndex-1));
+                            mergeCells(startColNum-1,rowIndex-2);
+                            
+                            scriptTag = false;
+                            scriptId++;
+                        }
+
+                        //Inserts the metrics into the google spreadsheet
                         if (colData == null)
                         {
-                            if (rowIndex==0)
+                            
+                            if (rowIndex==1)
                             {
+                                //appendSheetFormat(rowIndex);
+                                insertNewColumnValue("Script#" + scriptId, null, null, null, null, null, null, null, null, string.Concat(nullColumnIndexRange, rangeStr, rowIndex + 1));
+                                mergeCells(startColNum-1, rowIndex);
+                                //appendSheetFormat(rowIndex -1);
                                 insertSetupInfoColumn(finalRange);
+                                scriptId++;
+                                incrementIndex++;
                                 loop = false;
                             }
                             else
-                            {
-                                loop = false;
+                            {   
                                 insertNewColumnValue(transactionName, scriptName, Min, Max, Avg, Std, Count, bound1, bound2, finalRange);
-
+                                loop = false;
                             }
 
 
@@ -480,13 +508,7 @@ namespace OneClickCore
         {
             // The A1 notation of a range to search for a logical table of data.
             // Values will be appended after the last row of the table.
-            //string range = "1 - Performance Test Results!A:A";  // TODO: Update placeholder value.
-
-            // string spreadsheetId = spreadsheetIDTextbox.Text; //Impliment this for the input entered in the textbox
-
-
-            // The ID of the spreadsheet to update.
-
+            
 
             SheetsService sheetsService = new SheetsService(new BaseClientService.Initializer
             {
@@ -517,6 +539,40 @@ namespace OneClickCore
 
         }
 
+        public static void insertNewScriptEndRow(string scriptName, string Range, string spreadsheetId = "1rkEhkGsitr3VhKayIJpvdoUsIYOPfJUNimMD09CkMuE")
+        {
+
+            // The A1 notation of a range to search for a logical table of data.
+            // Values will be appended after the last row of the table.
+            //string range = "1 - Performance Test Results";  // TODO: Update placeholder value.
+
+
+            // string spreadsheetId = spreadsheetIDTextbox.Text; //Impliment this for the input entered in the textbox
+
+            SheetsService sheetsService = new SheetsService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = GetCredential(),
+                ApplicationName = "RaveReportAutomationUtility",
+            });
+
+            Data.ValueRange valueRange = new Data.ValueRange();
+            valueRange.MajorDimension = "ROWS";
+
+
+            // var output = Math.Round(Convert.ToDouble(getOverallWorkflowMetricsData(nameTag, "Response time[s]", "Avg")), 3);
+            var oblist = new List<Object>() { scriptName };//Try to make
+            valueRange.Values = new List<IList<object>> { oblist };
+
+
+            SpreadsheetsResource.ValuesResource.UpdateRequest update = sheetsService.Spreadsheets.Values.Update(valueRange, spreadsheetId, Range);
+            update.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+            Data.UpdateValuesResponse result = update.Execute();
+
+            /*SpreadsheetsResource.ValuesResource.AppendRequest append = sheetsService.Spreadsheets.Values.Append(valueRange, spreadsheetId, range);
+            append.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
+            Data.AppendValuesResponse result2 = append.Execute();*/
+
+        }
 
         public static void insertNewColumnValue(string transactionName, string scriptName, string Min, string Avg, string Max, string Std, string Count, string Bound1,string Bound2, string Range, string spreadsheetId = "1rkEhkGsitr3VhKayIJpvdoUsIYOPfJUNimMD09CkMuE")
         {
@@ -663,16 +719,7 @@ namespace OneClickCore
             //request.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.RAW;
             //var response = request.Execute();            
         }
-        public static dynamic convertToDouble(string inputMetrics)
-        {
-            if ((inputMetrics != "N/A") && (inputMetrics != null))
-            {
-                double metrics_Value = Math.Round(Convert.ToDouble(inputMetrics), 3);
-                return metrics_Value;
-            }
-            return "N/A";
-        }
-        public static void mergeCells(int startCol, string spreadsheetId = "1rkEhkGsitr3VhKayIJpvdoUsIYOPfJUNimMD09CkMuE", int sheetId = 0)
+        public static void mergeCells(int startCol,int startRow, string spreadsheetId = "1rkEhkGsitr3VhKayIJpvdoUsIYOPfJUNimMD09CkMuE", int sheetId = 0)
         {
             // The A1 notation of a range to search for a logical table of data.
             // Values will be appended after the last row of the table.
@@ -698,10 +745,10 @@ namespace OneClickCore
                     Range = new Data.GridRange
                     {
                         SheetId = sheetId,
-                        StartRowIndex = 1,
-                        EndRowIndex = 11,
+                        StartRowIndex = startRow,
+                        EndRowIndex = startRow+1,
                         StartColumnIndex = startCol,
-                        EndColumnIndex = startCol + 6
+                        EndColumnIndex = startCol + 9
 
 
                     },
@@ -738,6 +785,113 @@ namespace OneClickCore
             //var response = request.Execute();
 
         }
+
+
+        /*    public static void appendSheetFormat( int startRow,string spreadsheetId = "1rkEhkGsitr3VhKayIJpvdoUsIYOPfJUNimMD09CkMuE", int sheetId = 0)
+       {
+
+           // The A1 notation of a range to search for a logical table of data.
+           // Values will be appended after the last row of the table.
+           //   string range = "1 - Performance Test Results";  // TODO: Update placeholder value.
+           //"'1 - Performance Test Results'!A:G"
+           // The ID of the spreadsheet to update.
+
+           SheetsService sheetsService = new SheetsService(new BaseClientService.Initializer
+           {
+               HttpClientInitializer = GetCredential(),
+               ApplicationName = "RaveReportAutomationUtility",
+           });
+
+
+           //request to make the text bold in the provided range in the spreadsheet
+           Data.Request reqBody = new Data.Request
+           {
+               RepeatCell = new Data.RepeatCellRequest
+               {
+                   Fields = "*",
+                   Range = new Data.GridRange
+                   {
+                       SheetId = sheetId,
+                       StartRowIndex = startRow,
+                       EndRowIndex = startRow +1
+                   },
+                   Cell = new Data.CellData
+                   {
+                      UserEnteredFormat = new Data.CellFormat
+                      {
+
+                          TextFormat = new Data.TextFormat
+                          {
+
+                              Bold= true
+                          }
+                      }
+                   }
+
+               },
+
+
+           };
+           List<Data.Request> requests = new List<Data.Request>();
+           requests.Add(reqBody);
+
+           //Increases the width of the columns 1 and 2 to fit the text in the spreadsheet
+          /* if(startRow == 1)
+           {
+               Data.Request reqBody1 = new Data.Request
+               {
+
+                   UpdateDimensionProperties = new Data.UpdateDimensionPropertiesRequest
+                   {
+                       Fields = "*",
+                       Range = new Data.DimensionRange
+                       {
+                           SheetId = sheetId,
+                           StartIndex = 0,
+                           EndIndex = 2,
+                           Dimension = "COLUMNS"
+                       },
+                       Properties = new Data.DimensionProperties
+                       {
+                           PixelSize = 300
+                       }
+
+                   },
+               };
+               requests.Add(reqBody1);
+           }
+
+
+
+
+
+
+           // TODO: Assign values to desired properties of `requestBody`:
+
+           Data.BatchUpdateSpreadsheetRequest requestBody = new Data.BatchUpdateSpreadsheetRequest();
+           requestBody.Requests = requests;
+
+           SpreadsheetsResource.BatchUpdateRequest request = sheetsService.Spreadsheets.BatchUpdate(requestBody, spreadsheetId);
+           //SpreadsheetsResource.BatchUpdateRequest request = sheetsService.Spreadsheets.BatchUpdate(requestBody, spreadsheetId);
+
+
+           // To execute asynchronously in an async method, replace `request.Execute()` as shown:
+           Data.BatchUpdateSpreadsheetResponse response = request.Execute();
+           // Data.BatchUpdateSpreadsheetResponse response = await request.ExecuteAsync();
+
+           // TODO: Change code below to process the `response` object:
+           //Console.WriteLine(JsonConvert.SerializeObject(response));
+
+
+           //     SpreadsheetsResource.ValuesResource.AppendRequest request =
+           //         sheetsService.Spreadsheets.Values.Append(body, spreadsheetId, range);
+           //   request.InsertDataOption = SpreadsheetsResource.ValuesResource.AppendRequest.InsertDataOptionEnum.INSERTROWS;
+           //request.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.RAW;
+           //var response = request.Execute();            
+       }*/
+
+
+
         public static UserCredential GetCredential()
         {
             UserCredential credential;
